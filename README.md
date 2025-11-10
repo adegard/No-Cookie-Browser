@@ -6,7 +6,6 @@ A lightweight Linux desktop web browser built with **Python + GTK + WebKitGTK**,
 - ⭐ In-memory bookmarks
 - ⛔ Download blocking
 - 🧹 Basic ad filtering
-- 🌙 Optional dark mode
 
 ## ✨ Features
 - Ephemeral browsing context (no cookies, cache, localStorage, or IndexedDB)
@@ -14,7 +13,6 @@ A lightweight Linux desktop web browser built with **Python + GTK + WebKitGTK**,
 - Address bar with navigation buttons
 - Bookmark manager (in-memory)
 - JavaScript ad-blocker for common ad domains
-- Dark mode toggle via GTK settings
 
 ## 📦 Requirements
 Install dependencies (Debian/Ubuntu):
