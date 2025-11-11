@@ -59,7 +59,7 @@ Paste this:
 ```ini
 [Desktop Entry]
 Name=No-Cookie Browser
-Exec=nocookie-browser
+Exec=env WEBKIT_DISABLE_DMABUF_RENDERER=1 nocookie-browser
 Icon=web-browser
 Type=Application
 Categories=Network;WebBrowser;
