@@ -1,4 +1,4 @@
-# 🕹️ NoCookie Retro Browser
+# 🕹️ NoCookie Retro Browser (WORK IN PROGRESS!)
 
 A lightweight GTK + WebKit2 browser designed for **retro gaming atmosphere** and the **old internet feel of the 90s/early 2000s**.  
 It runs in ephemeral mode (no cookies, no cache, no local storage), giving you privacy by default and a nostalgic browsing experience.
