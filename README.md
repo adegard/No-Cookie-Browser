@@ -1,20 +1,40 @@
-# No-Cookie Browser 🕶️
+# 🕹️ NoCookie Retro Browser
 
-A lightweight Linux desktop web browser built with **Python + GTK + WebKitGTK**, designed for privacy:
-- 🚫 No cookies (ephemeral context)
-- 🗂️ Tabbed browsing
-- ⭐ In-memory bookmarks
-- ⛔ Download blocking
-- 🧹 Basic ad filtering
+A lightweight GTK + WebKit2 browser designed for **retro gaming atmosphere** and the **old internet feel of the 90s/early 2000s**.  
+It runs in ephemeral mode (no cookies, no cache, no local storage), giving you privacy by default and a nostalgic browsing experience.
+
+---
 
 ## ✨ Features
-- Ephemeral browsing context (no cookies, cache, localStorage, or IndexedDB)
-- Multiple tabs with dynamic titles
-- Address bar with navigation buttons
-- Bookmark manager (in-memory)
-- JavaScript ad-blocker for common ad domains
 
-## 📦 Requirements
+- **Retro 8‑bit style**
+  - Pixelated text rendering (blocky fonts, no anti‑aliasing)
+  - Pixelated images and videos (same size, crisp edges)
+  - Dark CRT‑like backgrounds with forced grey overrides for white/light pages
+  - Flat, blocky buttons and inputs — no rounded corners, no glossy effects
+
+- **Privacy first**
+  - Ephemeral WebKit context: no cookies, cache, or local storage
+  - Blocks sites from forcing fullscreen mode
+  - Cancels downloads automatically
+
+- **Classic browsing controls**
+  - Tabs with close buttons
+  - Back, forward, reload, and bookmark buttons
+  - Bookmark manager (add, open, delete, clear)
+
+- **Settings panel**
+  - Homepage selection
+  - Dark mode toggle
+  - Retro style toggle
+  - Zoom control (0.5x – 2.0x)
+  - Lock window size (prevent sites from resizing your window)
+
+---
+
+## 🚀 Installation
+
+## 📦 Requirements [PYTHON]
 Install dependencies (Debian/Ubuntu):
 
 ```bash
