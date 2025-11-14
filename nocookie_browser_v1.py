@@ -16,7 +16,9 @@ SETTINGS_PATH = os.path.join(CONFIG_DIR, "settings.json")
 DEFAULT_SETTINGS = {
     "homepage": "https://example.com",
     "dark_mode": True,
-    "apply_retro_style": True
+    "apply_retro_style": True,
+    "zoom": 1.0,
+    "lock_window_size": True
 }
 
 def ensure_paths():
@@ -42,100 +44,137 @@ def save_json(path, data):
     except Exception as e:
         print("Failed saving", path, e, file=sys.stderr)
 
-# Retro style CSS injected into each page when enabled
-RETRO_STYLE_SCRIPT = r"""
+# Retro 8-bit style: pixelized text, crisp images (no resizing), old-web colors, no glossy effects,
+# force white/light backgrounds to grey for readability. Also block fullscreen requests.
+RETRO_STYLE_AND_BLOCKS = r"""
 (function(){
   try {
     if (document.__retro_style_injected) return;
+
     const style = document.createElement('style');
     style.id = 'retro-style-inject';
     style.textContent = `
-      /* Use a bitmap/pixel font if available; fall back to monospace */
-      body, input, textarea, button, select, p, li, span, a {
+      /* Base pixel font + disable smoothing for blocky text */
+      body, input, textarea, button, select, p, li, span, a, div, header, nav, main, section, article, aside, footer, h1, h2, h3, h4, h5, h6 {
         font-family: "Press Start 2P", "Pixel 8x8", "Courier New", monospace !important;
         font-size: 13px !important;
-        line-height: 1.15 !important;
+        line-height: 1.2 !important;
+        letter-spacing: 0.6px !important;
         color: #e8e8e8 !important;
-        text-shadow: 0 0 0 #000, 1px 1px 0 #111 !important;
-        letter-spacing: 0.5px !important;
+        image-rendering: pixelated !important;
+        -webkit-font-smoothing: none !important;
+        -moz-osx-font-smoothing: grayscale !important;
+        background: transparent !important;
       }
 
-      /* High contrast, desaturated retro palette for backgrounds */
-      body, html {
+      /* Dark base background like old CRT night */
+      html, body {
         background-color: #0b0b0b !important;
         color: #e8e8e8 !important;
       }
 
-      /* Pixelate images and videos */
+      /* Force white/light backgrounds to readable grey */
+      [style*="background-color: white" i],
+      [style*="background-color:#fff" i],
+      [style*="background-color: #fff" i],
+      [style*="background: white" i],
+      [style*="background:#fff" i],
+      [style*="background: #fff" i],
+      .white, .bg-white, .has-background-white, .panel-white, .card-white {
+        background-color: #2b2b2b !important;
+        color: #e8e8e8 !important;
+      }
+
+      /* Container backgrounds: old-web flat look */
+      div, section, article, aside, header, nav, main, footer {
+        background-color: #121212 !important;
+      }
+
+      /* Links: cyan retro hue */
+      a, a:link, a:visited {
+        color: #8be9fd !important;
+        text-decoration: underline !important;
+      }
+      a:hover { color: #50fa7b !important; }
+
+      /* Pixelize images/videos without changing size */
       img, video {
         image-rendering: pixelated !important;
-        image-rendering: -webkit-optimize-contrast !important;
         image-rendering: -moz-crisp-edges !important;
         image-rendering: crisp-edges !important;
-        filter: contrast(140%) saturate(80%) brightness(105%) !important;
-        /* Prefer nearest-neighbor (keep natural size when possible) */
-        max-width: none !important;
-        max-height: none !important;
-        width: auto !important;
+        filter: contrast(135%) saturate(75%) brightness(105%) !important;
+        max-width: 100% !important;
         height: auto !important;
+        width: auto !important;
+        transform: none !important;
       }
 
-      /* Make large images display as blocky thumbnails if constrained by layout */
-      img.retro-scale, video.retro-scale {
-        transform-origin: top left !important;
-        transform: scale(2) !important;
+      /* Inputs/buttons with 90s flat borders */
+      input, textarea, select {
+        background-color: #101010 !important;
+        color: #e8e8e8 !important;
+        border: 1px solid #333 !important;
+        image-rendering: pixelated !important;
       }
-
-      /* Buttons and inputs with retro look */
-      button, input[type="button"], input[type="submit"], a.button {
+      button, input[type="button"], input[type="submit"], .btn, .button, a.button {
         border: 2px solid #444 !important;
         background: linear-gradient(#222, #111) !important;
         color: #e8e8e8 !important;
         padding: 6px 10px !important;
         box-shadow: none !important;
+        image-rendering: pixelated !important;
       }
 
-      /* Reduce rounded corners */
-      * { border-radius: 0 !important; }
+      /* Remove glossy modern visuals */
+      * {
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        filter: none !important;
+        outline: 0 !important;
+      }
 
-      /* Make SVG icons appear more 'blocky' by scaling - best-effort */
-      svg { shape-rendering: crispEdges !important; image-rendering: pixelated !important; }
+      /* Code stays readable */
+      pre, code, kbd {
+        font-family: "Courier New", monospace !important;
+        background: #0b0b0b !important;
+        color: #e6e6e6 !important;
+      }
 
-      /* Optional: reduce heavy shadows/blur from sites */
-      * { filter: none !important; text-shadow: none !important; box-shadow: none !important; }
+      /* SVG looks crisp */
+      svg { shape-rendering: crispEdges !important; image-rendering: pixelated !important; fill: #e8e8e8 !important; color: #e8e8e8 !important; }
+
+      /* Overlays/modals adopt dark/grey */
+      [role="dialog"], .modal, .overlay, .popup, .banner {
+        background-color: #2b2b2b !important;
+        color: #e8e8e8 !important;
+      }
     `;
     document.documentElement.appendChild(style);
-    document.__retro_style_injected = true;
 
-    // A small helper: add .retro-scale to images that are displayed smaller than their natural size
-    function markScaledImages() {
+    /* Block fullscreen: override APIs and auto-exit if any slip through */
+    const noopPromise = () => Promise.resolve();
+    try {
+      ["requestFullscreen","webkitRequestFullscreen","mozRequestFullScreen","msRequestFullscreen"].forEach(fn => {
+        try { if (Element.prototype[fn]) Element.prototype[fn] = noopPromise; } catch(e){}
+      });
+      if (document.documentElement && document.documentElement.requestFullscreen)
+        document.documentElement.requestFullscreen = noopPromise;
+      if (document.exitFullscreen) document.exitFullscreen = noopPromise;
+    } catch(e){}
+
+    function exitFs() {
       try {
-        document.querySelectorAll('img,video').forEach(el => {
-          const w = el.naturalWidth || el.videoWidth || 0;
-          const h = el.naturalHeight || el.videoHeight || 0;
-          if (w > 0 && h > 0) {
-            const displayedW = el.clientWidth || el.width || 0;
-            const displayedH = el.clientHeight || el.height || 0;
-            // if the image is being downscaled by CSS/layout, apply retro-scale class so nearest-neighbor scaling becomes visible
-            if (displayedW < Math.max(1, w) && displayedH < Math.max(1, h)) {
-              el.classList.add('retro-scale');
-            } else {
-              el.classList.remove('retro-scale');
-            }
-          }
-        });
+        if (document.exitFullscreen) document.exitFullscreen();
+        if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+        if (document.msExitFullscreen) document.msExitFullscreen();
       } catch(e){}
     }
+    ["fullscreenchange","webkitfullscreenchange","mozfullscreenchange","MSFullscreenChange"]
+      .forEach(evt => document.addEventListener(evt, exitFs, true));
 
-    // Run once and schedule a few short retries for dynamically loaded content
-    markScaledImages();
-    let tries = 0;
-    const t = setInterval(() => {
-      tries += 1;
-      markScaledImages();
-      if (tries >= 6) clearInterval(t);
-    }, 400);
-
+    document.__retro_style_injected = True;
   } catch(e){}
 })();
 """
@@ -146,7 +185,10 @@ class NoCookieBrowser(Gtk.Window):
         ensure_paths()
         self.settings = load_json(SETTINGS_PATH, DEFAULT_SETTINGS.copy())
         self.bookmarks = load_json(BOOKMARKS_PATH, [])
-        self.set_default_size(1000, 700)
+
+        # Old-web window size: solid, predictable
+        self.set_default_size(980, 720)
+        self.set_resizable(not bool(self.settings.get("lock_window_size", True)))
 
         try:
             Gtk.Settings.get_default().set_property(
@@ -167,13 +209,23 @@ class NoCookieBrowser(Gtk.Window):
         header.pack_start(self._make_button("Bookmarks", lambda w: self.show_bookmarks()))
         header.pack_end(self._make_button("Settings", lambda w: self.show_settings()))
 
-        # start with initial tab
+        # Start with a single tab like old browsers
         self.add_tab(self.settings.get("homepage", DEFAULT_SETTINGS["homepage"]))
 
     def _make_button(self, label, callback):
         btn = Gtk.Button(label=label)
         btn.connect("clicked", callback)
         return btn
+
+    def _apply_zoom(self, webview):
+        z = float(self.settings.get("zoom", 1.0))
+        try:
+            webview.set_zoom_level(z)
+        except Exception:
+            try:
+                webview.run_javascript(f"document.documentElement.style.zoom = {z};", None, None, None)
+            except Exception:
+                pass
 
     def add_tab(self, url):
         context = WebKit2.WebContext.new_ephemeral()
@@ -182,16 +234,24 @@ class NoCookieBrowser(Gtk.Window):
         webview = WebKit2.WebView.new_with_context(context)
         ucm = webview.get_user_content_manager()
 
-        # Inject retro style if enabled
+        # Inject retro style & fullscreen blocking
         if self.settings.get("apply_retro_style", True):
             ucm.add_script(WebKit2.UserScript.new(
-                RETRO_STYLE_SCRIPT,
+                RETRO_STYLE_AND_BLOCKS,
                 WebKit2.UserContentInjectedFrames.ALL_FRAMES,
                 WebKit2.UserScriptInjectionTime.END,
                 [], []
             ))
 
-        # Navigation widgets
+        # Apply zoom
+        self._apply_zoom(webview)
+
+        # Defensive: ignore web-driven resize requests (if signal exists)
+        try:
+            webview.connect("enter-fullscreen", lambda w: w.run_javascript("document.exitFullscreen && document.exitFullscreen();", None, None, None))
+        except Exception:
+            pass
+
         entry = Gtk.Entry()
         entry.set_text(url)
         entry.connect("activate", lambda w: self.navigate(webview, w.get_text()))
@@ -212,7 +272,7 @@ class NoCookieBrowser(Gtk.Window):
         container.pack_start(nav_box, False, False, 0)
         container.pack_start(webview, True, True, 0)
 
-        # Tab label with close button
+        # Retro tab label with close button
         tab_box = Gtk.Box(spacing=4)
         title_lbl = Gtk.Label(label="Loading…")
         close_btn = Gtk.Button(label="x")
@@ -226,7 +286,6 @@ class NoCookieBrowser(Gtk.Window):
         page_index = self.notebook.append_page(container, tab_box)
         self.notebook.set_tab_reorderable(container, True)
 
-        # Update tab title and address entry
         def on_title_notify(view, prop):
             try:
                 t = view.get_title() or view.get_uri() or "Tab"
@@ -273,6 +332,7 @@ class NoCookieBrowser(Gtk.Window):
         dialog.add_button("Close", Gtk.ResponseType.CLOSE)
         dialog.add_button("Clear All", Gtk.ResponseType.APPLY)
         box = dialog.get_content_area()
+
         if not self.bookmarks:
             box.add(Gtk.Label(label="No bookmarks yet."))
         else:
@@ -285,6 +345,7 @@ class NoCookieBrowser(Gtk.Window):
                 row.pack_end(del_btn, False, False, 0)
                 row.pack_end(open_btn, False, False, 0)
                 box.add(row)
+
         dialog.show_all()
         response = dialog.run()
         if response == Gtk.ResponseType.APPLY:
@@ -317,7 +378,22 @@ class NoCookieBrowser(Gtk.Window):
         retro_switch = Gtk.Switch()
         retro_switch.set_active(bool(self.settings.get("apply_retro_style", True)))
 
-        for label_text, widget in [("Homepage:", home_entry), ("Dark mode:", dark_switch), ("Retro 8-bit style:", retro_switch)]:
+        zoom_adjustment = Gtk.Adjustment(value=float(self.settings.get("zoom", 1.0)), lower=0.5, upper=2.0, step_increment=0.05, page_increment=0.1)
+        zoom_scale = Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL, adjustment=zoom_adjustment)
+        zoom_scale.set_digits(2)
+        zoom_scale.set_value_pos(Gtk.PositionType.RIGHT)
+
+        lock_switch = Gtk.Switch()
+        lock_switch.set_active(bool(self.settings.get("lock_window_size", True)))
+
+        rows = [
+            ("Homepage:", home_entry),
+            ("Dark mode:", dark_switch),
+            ("Retro 8-bit style:", retro_switch),
+            ("Zoom (0.5–2.0):", zoom_scale),
+            ("Lock window size:", lock_switch)
+        ]
+        for label_text, widget in rows:
             row = Gtk.Box(spacing=8)
             row.pack_start(Gtk.Label(label=label_text), False, False, 0)
             row.pack_start(widget, True, True, 0)
@@ -329,11 +405,14 @@ class NoCookieBrowser(Gtk.Window):
             self.settings["homepage"] = home_entry.get_text().strip() or DEFAULT_SETTINGS["homepage"]
             self.settings["dark_mode"] = dark_switch.get_active()
             self.settings["apply_retro_style"] = retro_switch.get_active()
+            self.settings["zoom"] = float(zoom_adjustment.get_value())
+            self.settings["lock_window_size"] = lock_switch.get_active()
             save_json(SETTINGS_PATH, self.settings)
             try:
                 Gtk.Settings.get_default().set_property("gtk-application-prefer-dark-theme", bool(self.settings["dark_mode"]))
             except Exception:
                 pass
+            self.set_resizable(not bool(self.settings.get("lock_window_size", True)))
         dialog.destroy()
 
 def main():
