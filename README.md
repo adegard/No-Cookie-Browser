@@ -35,7 +35,7 @@ It runs in ephemeral mode (no cookies, no cache, no local storage), giving you p
 
 ## 🚀 Installation
 
-## 📦 Requirements [PYTHON]
+# 📦 Requirements [PYTHON]
 Install dependencies (Debian/Ubuntu):
 
 ```bash
