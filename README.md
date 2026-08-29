@@ -95,3 +95,7 @@ sudo chmod +x /usr/share/applications/nocookie-browser.desktop
 ```bash
 sudo apt remove nocookie-browser
 ```
+
+---
+
+For an overview of all my other projects, see https://adegard.github.io/blog/
